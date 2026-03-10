@@ -1,0 +1,12 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running `target/debug/polyglot-observer`
+Starting Universal Node Observer...
+Config loaded: AppConfig { base_log_path: "./test_logs", lingo_api_url: "https://api.lingo.dev/v1", lingo_api_key: "api_fbfhs82flujjt3w8wj756vpc", loki_url: "http://localhost:3100/loki/api/v1/push", target_language: "es" }
+Observer is now watching logs...
+Discovering logs with pattern: ./test_logs/**/*.log
+Watching file: "test_logs/default_payment-service_12345/0.log"
+⚠️ Lingo API status: 404 Not Found (Attempt 1)
+
+🚀 [SERVICE: payment-service]
+   RAW: ERROR: [550e8400-e29b-41d4-a716-446655440000] Database connection failed
+   LOCALIZED: ERROR: [550e8400-e29b-41d4-a716-446655440000] fallo en la conexión a la base de datos

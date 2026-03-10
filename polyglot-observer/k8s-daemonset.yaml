@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: lingo-observer
+  labels:
+    app: lingo-observer
+spec:
+  selector:
+    matchLabels:
+      name: lingo-observer
+  template:
+    metadata:
+      labels:
+        name: lingo-observer
+    spec:
+      containers:
+      - name: lingo-observer
+        image: lastpatriot/lingo-observer:v1
+        volumeMounts:
+        - name: varlogpods
+          mountPath: /var/log/pods
+          readOnly: true
+        - name: config
+          mountPath: /etc/lingo-observer
+      volumes:
+      - name: varlogpods
+        hostPath:
+          path: /var/log/pods
+      - name: config
+        configMap:
+          name: lingo-observer-config
