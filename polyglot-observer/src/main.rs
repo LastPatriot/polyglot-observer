@@ -36,6 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 5. Process log entries
     while let Some((service_name, log_line)) = rx.recv().await {
+        println!("DEBUG: Received line for {}: {}", service_name, log_line);
         let localizer = &bootstrapper.localizer;
         let exporter = &bootstrapper.exporter;
 

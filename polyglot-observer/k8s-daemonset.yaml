@@ -16,10 +16,15 @@ spec:
       containers:
       - name: lingo-observer
         image: lastpatriot/lingo-observer:v1
+        securityContext:
+          privileged: true
         workingDir: /etc/lingo-observer
         volumeMounts:
         - name: varlogpods
           mountPath: /var/log/pods
+          readOnly: true
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
           readOnly: true
         - name: config
           mountPath: /etc/lingo-observer
@@ -27,6 +32,9 @@ spec:
       - name: varlogpods
         hostPath:
           path: /var/log/pods
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
       - name: config
         configMap:
           name: lingo-observer-config
