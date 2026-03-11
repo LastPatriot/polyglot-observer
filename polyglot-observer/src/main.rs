@@ -20,10 +20,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bootstrapper = Bootstrapper::new(&config);
 
     // 3. Initialize communication channel
-    let (tx, mut rx) = mpsc::channel::<(String, String)>(100);
+    let (tx, mut rx) = mpsc::channel::<(String, String, String, String)>(100);
 
     // 4. Start Log Watcher (as a background task)
-    let mut watcher = LogWatcher::new(bootstrapper.base_log_path.clone(), tx);
+    let mut watcher = LogWatcher::new(bootstrapper.base_log_path.clone(), tx, config.exclude_namespaces.clone());
     
     // For this demonstration, we'll spawn the watcher and process logs.
     tokio::spawn(async move {
@@ -35,21 +35,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Observer is now watching logs...");
 
     // 5. Process log entries
-    while let Some((service_name, log_line)) = rx.recv().await {
-        println!("DEBUG: Received line for {}: {}", service_name, log_line);
+    while let Some((namespace, pod, container, log_line)) = rx.recv().await {
         let localizer = &bootstrapper.localizer;
         let exporter = &bootstrapper.exporter;
 
         // Localize log entry
         let localized = localizer.localize(&log_line).await;
 
+        if localized.is_empty() {
+            continue;
+        }
+
         // 🔍 DEBUG HOOK: Visualize the Observer in action
-        println!("\n🚀 [SERVICE: {}]", service_name);
-        println!("   RAW: {}", log_line);
-        println!("   LOCALIZED: {}", localized);
+        println!("\n🚀 [{}/{}/{}] -> {}", namespace, pod, container, localized);
 
         // Export to Grafana Loki
-        exporter.export(&service_name, &localized).await;
+        exporter.export(&namespace, &pod, &container, &localized).await;
     }
 
     Ok(())

@@ -29,9 +29,24 @@ impl LingoLocalizer {
 #[async_trait]
 impl Localizer for LingoLocalizer {
     async fn localize(&self, text: &str) -> String {
+        // Step 0: Recursively parse JSON to find the innermost "log" or clean text
+        let mut actual_text = text.to_string();
+        while let Ok(v) = serde_json::from_str::<serde_json::Value>(&actual_text) {
+            if let Some(inner) = v["log"].as_str() {
+                actual_text = inner.to_string();
+            } else {
+                break; // No more "log" field to peel
+            }
+        }
+        actual_text = actual_text.trim().to_string();
+
+        if actual_text.is_empty() {
+            return String::new();
+        }
+
         // Step 1: Mask identifiers to preserve "Technical Truth"
         let mut tokens = Vec::new();
-        let masked_text = self.tech_token_re.replace_all(text, |caps: &regex::Captures| {
+        let masked_text = self.tech_token_re.replace_all(&actual_text, |caps: &regex::Captures| {
             let token = caps[0].to_string();
             tokens.push(token);
             format!("{{{{{}}}}}", tokens.len() - 1)
@@ -67,7 +82,7 @@ impl Localizer for LingoLocalizer {
                             let placeholder = format!("{{{{{}}}}}", i);
                             localized = localized.replace(&placeholder, token);
                         }
-                        return localized;
+                        return localized.trim().to_string();
                     }
                 }
                 Ok(res) => {
@@ -75,12 +90,12 @@ impl Localizer for LingoLocalizer {
                     
                     // 🚀 HACKATHON EMERGENCY FALLBACK: If API is 401 (Invalid Key), provide best-effort localization
                     if res.status() == 401 && self.target_language == "es" {
-                        let sim = text.to_lowercase()
+                        let sim = actual_text.to_lowercase()
                             .replace("database connection failed", "fallo en la conexión a la base de datos")
                             .replace("error", "ERROR")
                             .replace("failed", "falló")
                             .replace("connection", "conexión");
-                        return sim;
+                        return sim.trim().to_string();
                     }
 
                     if attempt < 2 {
@@ -99,6 +114,6 @@ impl Localizer for LingoLocalizer {
         }
 
         // Final Fallback: Return the original text if all retries fail
-        text.to_string()
+        actual_text.trim().to_string()
     }
 }

@@ -1,52 +1,77 @@
 use regex::Regex;
 use linemux::MuxedLines;
 use tokio::sync::mpsc;
+use std::collections::HashSet;
+use tokio::time::{sleep, Duration};
 
 pub struct LogWatcher {
     base_path: String,
-    tx: mpsc::Sender<(String, String)>,
+    tx: mpsc::Sender<(String, String, String, String)>, // (namespace, pod, container, content)
+    exclude_namespaces: Vec<String>,
 }
 
 impl LogWatcher {
-    pub fn new(base_path: String, tx: mpsc::Sender<(String, String)>) -> Self {
-        Self { base_path, tx }
+    pub fn new(base_path: String, tx: mpsc::Sender<(String, String, String, String)>, exclude_namespaces: Option<String>) -> Self {
+        let exclude = exclude_namespaces
+            .map(|s| s.split(',').map(|n| n.trim().to_string()).collect())
+            .unwrap_or_default();
+
+        Self { base_path, tx, exclude_namespaces: exclude }
     }
 
     pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut lines = MuxedLines::new()?;
-
-        // Construct the pattern to find all .log files recursively
+        let mut watched_files = HashSet::new();
         let pattern = format!("{}/**/*.log", self.base_path);
-        println!("Discovering logs with pattern: {}", pattern);
 
-        for entry in glob::glob(&pattern)? {
-            match entry {
-                Ok(path) => {
-                    println!("Watching file: {:?}", path);
-                    lines.add_file(&path).await?;
+        println!("Auto-discovery enabled. Monitoring pattern: {}", pattern);
+
+        loop {
+            // 1. Check for new files
+            for entry in glob::glob(&pattern)? {
+                if let Ok(path) = entry {
+                    let path_str = path.to_string_lossy().to_string();
+                    if !watched_files.contains(&path_str) {
+                        println!("New log discovered: {}", path_str);
+                        if let Err(e) = lines.add_file(&path).await {
+                            eprintln!("Error adding file {}: {}", path_str, e);
+                        } else {
+                            watched_files.insert(path_str);
+                        }
+                    }
                 }
-                Err(e) => eprintln!("Error in glob discovery: {:?}", e),
+            }
+
+            // 2. Process any pending lines with a timeout to avoid blocking discovery
+            tokio::select! {
+                line_res = lines.next_line() => {
+                    if let Ok(Some(line)) = line_res {
+                        let path = line.source().to_string_lossy();
+                        let (namespace, pod, container) = Self::extract_identity(&path);
+                        
+                        if !self.exclude_namespaces.contains(&namespace) {
+                            let content = line.line().to_string();
+                            let _ = self.tx.send((namespace, pod, container, content)).await;
+                        }
+                    }
+                }
+                _ = sleep(Duration::from_secs(5)) => {
+                    // Periodic re-scan trigger
+                }
             }
         }
-
-        while let Ok(Some(line)) = lines.next_line().await {
-            let path = line.source().to_string_lossy();
-            let service_name = Self::extract_service_name(&path);
-            let content = line.line().to_string();
-            
-            let _ = self.tx.send((service_name, content)).await;
-        }
-        
-        Ok(())
     }
 
-    fn extract_service_name(path: &str) -> String {
-        // Expected format: namespace_service-name_id (works with relative or absolute paths)
-        let re = Regex::new(r"[^/_]+_([^_/]+)_[^/_/]+").unwrap();
+    fn extract_identity(path: &str) -> (String, String, String) {
+        // Path format: /var/log/pods/<namespace>_<pod-name>_<pod-uuid>/<container-name>/<retry-count>.log
+        let re = Regex::new(r"([^_/]+)_([^_/]+_[^_/]+)/([^_/]+)/").unwrap();
         if let Some(caps) = re.captures(path) {
-            caps.get(1).map_or("unknown".to_string(), |m| m.as_str().to_string())
+            let ns = caps.get(1).map_or("unknown".to_string(), |m| m.as_str().to_string());
+            let pod = caps.get(2).map_or("unknown".to_string(), |m| m.as_str().to_string());
+            let container = caps.get(3).map_or("unknown".to_string(), |m| m.as_str().to_string());
+            (ns, pod, container)
         } else {
-            "unknown".to_string()
+            ("unknown".to_string(), "unknown".to_string(), "unknown".to_string())
         }
     }
 }
@@ -56,14 +81,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_extract_service_name() {
-        let path = "/var/log/pods/default_auth-service_12345/0.log";
-        assert_eq!(LogWatcher::extract_service_name(path), "auth-service");
-
-        let path2 = "/var/log/pods/kube-system_coredns_54321/0.log";
-        assert_eq!(LogWatcher::extract_service_name(path2), "coredns");
-        
-        let invalid_path = "/var/log/messages";
-        assert_eq!(LogWatcher::extract_service_name(invalid_path), "unknown");
+    fn test_extract_identity() {
+        let path = "/var/log/pods/default_auth-service_12345/auth-service/0.log";
+        let (ns, pod, container) = LogWatcher::extract_identity(path);
+        assert_eq!(ns, "default");
+        assert_eq!(pod, "auth-service_12345");
+        assert_eq!(container, "auth-service");
     }
 }
