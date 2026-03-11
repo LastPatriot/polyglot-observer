@@ -6,6 +6,6 @@ pub trait Localizer {
 }
 
 #[async_trait]
-pub trait Exporter {
-    async fn export(&self, service_name: &str, localized_text: &str);
+pub trait Exporter: Send + Sync {
+    async fn export(&self, namespace: &str, pod: &str, container: &str, localized_text: &str);
 }

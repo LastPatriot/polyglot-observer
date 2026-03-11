@@ -22,7 +22,7 @@ impl LokiExporter {
 
 #[async_trait]
 impl Exporter for LokiExporter {
-    async fn export(&self, service_name: &str, localized_text: &str) {
+    async fn export(&self, namespace: &str, pod: &str, container: &str, localized_text: &str) {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -32,10 +32,11 @@ impl Exporter for LokiExporter {
         let payload = json!({
             "streams": [{
                 "stream": {
-                    "service": service_name,
-                    "level": "info",
-                    "origin": "lingo-observer",
-                    "language": self.target_language
+                    "namespace": namespace,
+                    "pod": pod,
+                    "container": container,
+                    "language": self.target_language,
+                    "origin": "lingo-observer"
                 },
                 "values": [
                     [now, localized_text]

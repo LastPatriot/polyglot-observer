@@ -16,6 +16,10 @@ spec:
       containers:
       - name: lingo-observer
         image: lastpatriot/lingo-observer:v1
+        imagePullPolicy: Always
+        env:
+        - name: EXCLUDE_NAMESPACES
+          value: "kube-system,kubernetes-dashboard,default"
         securityContext:
           privileged: true
         workingDir: /etc/lingo-observer
