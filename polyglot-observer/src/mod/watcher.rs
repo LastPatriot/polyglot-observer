@@ -2,7 +2,7 @@ use regex::Regex;
 use linemux::MuxedLines;
 use tokio::sync::mpsc;
 use std::collections::HashSet;
-use tokio::time::{sleep, Duration};
+use tokio::time::{sleep, Duration, timeout};
 
 pub struct LogWatcher {
     base_path: String,
@@ -42,23 +42,18 @@ impl LogWatcher {
                 }
             }
 
-            // 2. Process any pending lines with a timeout to avoid blocking discovery
-            tokio::select! {
-                line_res = lines.next_line() => {
-                    if let Ok(Some(line)) = line_res {
-                        let path = line.source().to_string_lossy();
-                        let (namespace, pod, container) = Self::extract_identity(&path);
-                        
-                        if !self.exclude_namespaces.contains(&namespace) {
-                            let content = line.line().to_string();
-                            let _ = self.tx.send((namespace, pod, container, content)).await;
-                        }
-                    }
-                }
-                _ = sleep(Duration::from_secs(5)) => {
-                    // Periodic re-scan trigger
+            // 2. Process pending lines for a short burst
+            while let Ok(Ok(Some(line))) = timeout(Duration::from_millis(100), lines.next_line()).await {
+                let path = line.source().to_string_lossy();
+                let (namespace, pod, container) = Self::extract_identity(&path);
+                
+                if !self.exclude_namespaces.contains(&namespace) {
+                    let content = line.line().to_string();
+                    let _ = self.tx.send((namespace, pod, container, content)).await;
                 }
             }
+
+            sleep(Duration::from_secs(5)).await;
         }
     }
 
