@@ -1,6 +1,6 @@
 base_log_path = "./test_logs"
 lingo_api_url = "https://api.lingo.dev/process"
-lingo_api_key = "api_i5o7fvkedtg3pf2q2m1voovo"
+lingo_api_key = "lingo_sk_RCdtsQ4G7yGM6T9YwjO7UyytdY8_52yN9eZ5zR6TBdc"
 loki_url = "http://localhost:3100/loki/api/v1/push"
 target_language = "es"
 

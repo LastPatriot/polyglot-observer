@@ -16,6 +16,7 @@ spec:
       containers:
       - name: lingo-observer
         image: lastpatriot/lingo-observer:v1
+        workingDir: /etc/lingo-observer
         volumeMounts:
         - name: varlogpods
           mountPath: /var/log/pods

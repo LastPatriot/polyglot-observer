@@ -46,8 +46,11 @@ impl Localizer for LingoLocalizer {
             let response = self.client.post(&format!("{}/localize", self.api_url))
                 .header("X-API-Key", &self.api_key)
                 .json(&json!({
-                    "text": masked_text,
-                    "targetLocale": self.target_language
+                    "sourceLocale": "en",
+                    "targetLocale": self.target_language,
+                    "data": {
+                        "text": masked_text
+                    }
                 }))
                 .send()
                 .await;
@@ -55,7 +58,7 @@ impl Localizer for LingoLocalizer {
             match response {
                 Ok(res) if res.status().is_success() => {
                     if let Ok(body) = res.json::<serde_json::Value>().await {
-                        let mut localized = body["translation"].as_str()
+                        let mut localized = body["data"]["text"].as_str()
                             .map(|s| s.to_string())
                             .unwrap_or_else(|| masked_text.clone());
                         
