@@ -59,7 +59,7 @@ graph TB
 *   **Namespace Filtering:** Features a high-performance exclusion list (configured via `EXCLUDE_NAMESPACES`) to skip system noise from `kube-system` or `istio-system`.
 
 ### 2. The AI Pipeline (`LingoLocalizer`)
-*   **Recursive JSON Peeling:** Kubernetes wraps every log line in a JSON envelope. Our custom logic recursively "peels" these layers to find the innermost clean text string for translation.
+*   **Recursive JSON Peeling:** Kubernetes wraps every log line in a JSON envelope. The custom logic recursively "peels" these layers to find the innermost clean text string for translation.
 *   **Technical Truth Preservation:** Before sending text to the AI, we use specialized Regex patterns to identify and "mask" technical identifiers like:
     *   UUIDs / GUIDs
     *   Trace IDs / Span IDs
@@ -70,7 +70,7 @@ graph TB
 
 ### 3. The Isolation Exporter (`LokiExporter`)
 *   **Identity Impersonation:** Extracts `namespace`, `pod`, and `container` names from the log path and attaches them as standard Loki labels.
-*   **Stream Integrity:** By using standard labels, your localized logs appear in Grafana exactly where you expect them, allowing you to use existing dashboards without modification.
+*   **Stream Integrity:** The use of standard labels helps to ensure that the localized logs appear in Grafana exactly where it is expected, allowing the use of existing dashboards without modification.
 
 ---
 
@@ -82,7 +82,7 @@ graph TB
 *   A Lingo.dev API Key (`lingo_sk_...`)
 
 ### 1. Install the Logging Backend
-We use the standard Grafana-Loki stack. We disable the default `promtail` agent to ensure only our localized logs appear in the dashboard.
+Use the standard Grafana-Loki stack and disable the default `promtail` agent to ensure that only the localized logs appear in the dashboard.
 ```bash
 helm repo add grafana https://grafana.github.io/helm-charts
 helm repo update
