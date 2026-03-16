@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // 🔍 DEBUG HOOK: Visualize the Observer in action
-        println!("\n🚀 [{}/{}/{}] -> {}", namespace, pod, container, localized);
+        println!("\n [{}/{}/{}] -> {}", namespace, pod, container, localized);
 
         // Export to Grafana Loki
         exporter.export(&namespace, &pod, &container, &localized).await;

@@ -86,7 +86,7 @@ impl Localizer for LingoLocalizer {
                     }
                 }
                 Ok(res) => {
-                    eprintln!("⚠️ Lingo API status: {} (Attempt {})", res.status(), attempt + 1);
+                    eprintln!(" Lingo API status: {} (Attempt {})", res.status(), attempt + 1);
                     
                     // 🚀 HACKATHON EMERGENCY FALLBACK: If API is 401 (Invalid Key), provide best-effort localization
                     if res.status() == 401 && self.target_language == "es" {
@@ -104,7 +104,7 @@ impl Localizer for LingoLocalizer {
                     }
                 }
                 Err(e) => {
-                    eprintln!("❌ Lingo API error: {:?} (Attempt {})", e, attempt + 1);
+                    eprintln!(" Lingo API error: {:?} (Attempt {})", e, attempt + 1);
                     if attempt < 2 {
                         sleep(delay).await;
                         delay *= 2;
